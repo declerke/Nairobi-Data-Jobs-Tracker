@@ -1,5 +1,6 @@
 .env
 .env.local
+projectsummary.md
 .env.*.local
 __pycache__/
 *.py[cod]

@@ -12,9 +12,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from scrapers import scrape_brightermonday, scrape_myjobmag, scrape_fuzu
 from utils import (
     get_db_manager,
-    get_matcher,
     get_notifier,
-    setup_logging
+    setup_logging,
+    match_in_job,
 )
 from config import (
     AirflowConfig,
@@ -130,61 +130,51 @@ def scrape_fuzu_task(**context):
 def process_and_store_jobs_task(**context):
     ti = context['task_instance']
     db = get_db_manager()
-    matcher = get_matcher()
-    
+
     all_jobs = []
-    
-    try:
-        brightermonday_jobs = ti.xcom_pull(key='brightermonday_jobs', task_ids='scrape_brightermonday')
-        if brightermonday_jobs:
-            all_jobs.extend(brightermonday_jobs)
-    except Exception:
-        pass
-    
-    try:
-        myjobmag_jobs = ti.xcom_pull(key='myjobmag_jobs', task_ids='scrape_myjobmag')
-        if myjobmag_jobs:
-            all_jobs.extend(myjobmag_jobs)
-    except Exception:
-        pass
-    
-    try:
-        fuzu_jobs = ti.xcom_pull(key='fuzu_jobs', task_ids='scrape_fuzu')
-        if fuzu_jobs:
-            all_jobs.extend(fuzu_jobs)
-    except Exception:
-        pass
-    
+
+    for task_id, xcom_key in [
+        ('scrape_brightermonday', 'brightermonday_jobs'),
+        ('scrape_myjobmag',       'myjobmag_jobs'),
+        ('scrape_fuzu',           'fuzu_jobs'),
+    ]:
+        try:
+            jobs = ti.xcom_pull(key=xcom_key, task_ids=task_id)
+            if jobs:
+                all_jobs.extend(jobs)
+        except Exception:
+            pass
+
     if not all_jobs:
         return 0
-    
+
     inserted_count = 0
-    
+
     for job in all_jobs:
         try:
-            keywords = matcher.match_in_job(job)
-            job['keywords_matched'] = keywords
-            
-            job_id = db.insert_job(
-                job_title=job['job_title'],
-                company=job.get('company'),
-                location=job.get('location'),
-                posting_url=job['posting_url'],
-                source=job['source'],
-                salary_text=job.get('salary_text'),
-                description_snippet=job.get('description_snippet'),
-                full_description=job.get('full_description'),
-                posted_date=job.get('posted_date'),
-                keywords_matched=keywords,
-                metadata=job.get('metadata')
-            )
-            
-            if job_id:
+            job = match_in_job(job)
+
+            job_data = {
+                'job_title':           job['job_title'],
+                'company':             job.get('company'),
+                'location':            job.get('location'),
+                'salary_text':         job.get('salary_text'),
+                'posting_url':         job['posting_url'],
+                'posted_date':         job.get('posted_date'),
+                'description_snippet': job.get('description_snippet'),
+                'full_description':    job.get('full_description'),
+                'source':              job['source'],
+                'keywords_matched':    job.get('keywords_matched', []),
+                'keyword_match_count': job.get('keyword_count', 0),
+                'metadata':            job.get('metadata'),
+            }
+
+            if db.insert_job(job_data):
                 inserted_count += 1
-        
+
         except Exception:
             continue
-    
+
     ti.xcom_push(key='inserted_count', value=inserted_count)
     return inserted_count
 
@@ -202,15 +192,15 @@ def send_email_notifications_task(**context):
         return 0
     
     try:
-        success = notifier.send_job_alerts(jobs)
-        
+        success = notifier.send_daily_digest(jobs)
+
         if success:
             job_ids = [job['id'] for job in jobs]
             for job_id in job_ids:
                 db.mark_job_notified(job_id)
-            
+
             db.log_email_sent(
-                recipient=notifier.config.RECIPIENT,
+                recipient=notifier.recipient_email,
                 subject=f"{len(jobs)} New Job Matches",
                 jobs_count=len(jobs),
                 job_ids=job_ids,

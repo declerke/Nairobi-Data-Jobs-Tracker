@@ -73,10 +73,39 @@ class JobBoardURLs:
     )
 
 class KeywordConfig:
-    _target_keywords_str = os.getenv(
-        'TARGET_KEYWORDS',
-        'FastAPI,PostgreSQL,MySQL,Flask,Pandas,NumPy,Azure,AWS,GCP,Docker,Kafka,Git,GitHub'
+    # ── Data Engineering ────────────────────────────────────────────────────
+    _DE = (
+        'Data Engineer,Python,SQL,ETL,ELT,Data Pipeline,Airflow,Kafka,Spark,'
+        'dbt,Pandas,PySpark,Databricks,BigQuery,Snowflake,Redshift,PostgreSQL,'
+        'MySQL,AWS,Azure,GCP,Docker,Kubernetes,Terraform,FastAPI,Flask,MLOps'
     )
+    # ── Data Analysis / BI ──────────────────────────────────────────────────
+    _DA = (
+        'Data Analyst,Analytics,Business Intelligence,BI Analyst,Power BI,'
+        'Tableau,Looker,Metabase,Excel,Data Visualization,Reporting,Dashboard,'
+        'Statistical Analysis,R,SPSS,Google Analytics,Insight,Analyst'
+    )
+    # ── Information Technology ──────────────────────────────────────────────
+    _IT = (
+        'IT Officer,IT Support,IT Manager,System Administrator,Network Administrator,'
+        'Network Engineer,IT Technician,Help Desk,Service Desk,ITIL,Linux,'
+        'Windows Server,Active Directory,Cybersecurity,Cloud Computing,DevOps,'
+        'Technical Support,Infrastructure,IT Analyst,Systems Analyst,ICT Officer'
+    )
+    # ── Graduate / Entry-Level ──────────────────────────────────────────────
+    _GRAD = (
+        'Graduate,Trainee,Intern,Internship,Entry Level,Fresh Graduate,Junior,'
+        'Attachment,Industrial Attachment,Management Trainee,Apprentice,Graduate Program'
+    )
+    # ── Database Management ─────────────────────────────────────────────────
+    _DB = (
+        'DBA,Database Administrator,Database Developer,Oracle,MongoDB,Redis,'
+        'SQL Server,MSSQL,NoSQL,Database Design,Cassandra,Database Engineer,MariaDB'
+    )
+
+    _default_keywords = ','.join([_DE, _DA, _IT, _GRAD, _DB])
+
+    _target_keywords_str = os.getenv('TARGET_KEYWORDS', _default_keywords)
     TARGET_KEYWORDS: List[str] = [k.strip() for k in _target_keywords_str.split(',') if k.strip()]
     _bonus_keywords_str = os.getenv('BONUS_KEYWORDS', '')
     BONUS_KEYWORDS: List[str] = [k.strip() for k in _bonus_keywords_str.split(',') if k.strip()]

@@ -8,63 +8,140 @@ logger = logging.getLogger(__name__)
 class KeywordMatcher:
     
     DEFAULT_KEYWORDS = [
-        'Python', 'SQL', 'R', 'Java', 'Scala', 'JavaScript', 'Go',
-        'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Cassandra',
-        'Snowflake', 'BigQuery', 'Redshift', 'DynamoDB',
-        'FastAPI', 'Flask', 'Django', 'Pandas', 'NumPy', 'Scikit-learn',
-        'TensorFlow', 'PyTorch', 'Spark', 'Kafka', 'Airflow', 'dbt',
-        'AWS', 'Azure', 'GCP', 'Google Cloud', 'Amazon Web Services',
-        'Docker', 'Kubernetes', 'Git', 'GitHub', 'GitLab', 'Jenkins',
-        'Terraform', 'CI/CD',
-        'Tableau', 'Power BI', 'Looker', 'Metabase', 'Superset',
-        'ETL', 'ELT', 'Data Pipeline', 'Data Warehouse', 'Data Lake',
-        'Stream Processing', 'Batch Processing',
-        'Machine Learning', 'ML', 'Deep Learning', 'NLP', 'Computer Vision',
-        'Neural Networks', 'Random Forest', 'XGBoost'
+        # ── Data Engineering ────────────────────────────────────────────────
+        'Data Engineer', 'Python', 'SQL', 'ETL', 'ELT', 'Data Pipeline',
+        'Airflow', 'Kafka', 'Spark', 'dbt', 'Pandas', 'PySpark', 'Databricks',
+        'PostgreSQL', 'MySQL', 'BigQuery', 'Snowflake', 'Redshift',
+        'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Terraform',
+        'FastAPI', 'Flask', 'MLOps',
+        # ── Data Analysis / BI ──────────────────────────────────────────────
+        'Data Analyst', 'Analytics', 'Business Intelligence', 'BI Analyst',
+        'Power BI', 'Tableau', 'Looker', 'Metabase', 'Excel',
+        'Data Visualization', 'Reporting', 'Dashboard', 'Statistical Analysis',
+        'R', 'SPSS', 'Google Analytics', 'Analyst',
+        # ── Information Technology ───────────────────────────────────────────
+        'IT Officer', 'IT Support', 'IT Manager', 'System Administrator',
+        'Network Administrator', 'Network Engineer', 'IT Technician',
+        'Help Desk', 'Service Desk', 'ITIL', 'Linux', 'Windows Server',
+        'Active Directory', 'Cybersecurity', 'Cloud Computing', 'DevOps',
+        'Technical Support', 'Infrastructure', 'IT Analyst',
+        'Systems Analyst', 'ICT Officer',
+        # ── Graduate / Entry-Level ───────────────────────────────────────────
+        'Graduate', 'Trainee', 'Intern', 'Internship', 'Entry Level',
+        'Fresh Graduate', 'Junior', 'Attachment', 'Industrial Attachment',
+        'Management Trainee', 'Graduate Program',
+        # ── Database Management ──────────────────────────────────────────────
+        'DBA', 'Database Administrator', 'Database Developer', 'Oracle',
+        'MongoDB', 'Redis', 'SQL Server', 'MSSQL', 'NoSQL',
+        'Database Design', 'Cassandra', 'Database Engineer', 'MariaDB',
     ]
-    
+
     KEYWORD_VARIATIONS = {
-        'PostgreSQL': ['postgres', 'postgresql', 'psql'],
-        'MySQL': ['mysql', 'my sql'],
-        'FastAPI': ['fastapi', 'fast api'],
-        'AWS': ['aws', 'amazon web services', 'amazon aws'],
-        'GCP': ['gcp', 'google cloud platform', 'google cloud'],
-        'Azure': ['azure', 'microsoft azure', 'ms azure'],
-        'Git': ['git', 'version control'],
-        'GitHub': ['github', 'git hub'],
-        'Docker': ['docker', 'containerization', 'containers'],
-        'Kubernetes': ['kubernetes', 'k8s'],
-        'Machine Learning': ['machine learning', 'ml', 'machinelearning'],
-        'Data Science': ['data science', 'datascience'],
-        'Pandas': ['pandas', 'pd'],
-        'NumPy': ['numpy', 'np'],
-        'Scikit-learn': ['scikit-learn', 'sklearn', 'scikit learn'],
-        'TensorFlow': ['tensorflow', 'tf'],
-        'PyTorch': ['pytorch', 'torch'],
-        'Airflow': ['airflow', 'apache airflow'],
-        'Spark': ['spark', 'apache spark', 'pyspark'],
-        'Kafka': ['kafka', 'apache kafka'],
-        'CI/CD': ['ci/cd', 'cicd', 'continuous integration', 'continuous deployment'],
-        'ETL': ['etl', 'extract transform load'],
-        'Power BI': ['power bi', 'powerbi', 'power-bi'],
+        # Data Engineering
+        'Data Engineer':          ['data engineer', 'data engineering'],
+        'Python':                 ['python', 'python3'],
+        'SQL':                    ['sql', 'structured query language'],
+        'ETL':                    ['etl', 'extract transform load', 'extract, transform'],
+        'Airflow':                ['airflow', 'apache airflow'],
+        'Spark':                  ['spark', 'apache spark', 'pyspark'],
+        'Kafka':                  ['kafka', 'apache kafka'],
+        'PostgreSQL':             ['postgres', 'postgresql', 'psql'],
+        'MySQL':                  ['mysql', 'my sql'],
+        'AWS':                    ['aws', 'amazon web services'],
+        'GCP':                    ['gcp', 'google cloud platform', 'google cloud'],
+        'Azure':                  ['azure', 'microsoft azure', 'ms azure'],
+        'Docker':                 ['docker', 'containerization', 'containers'],
+        'Kubernetes':             ['kubernetes', 'k8s'],
+        'Terraform':              ['terraform', 'infrastructure as code', 'iac'],
+        'FastAPI':                ['fastapi', 'fast api'],
+        # Data Analysis / BI
+        'Data Analyst':           ['data analyst', 'data analysis', 'analyst'],
+        'Analytics':              ['analytics', 'analytical'],
+        'Business Intelligence':  ['business intelligence', 'bi', 'b.i.'],
+        'BI Analyst':             ['bi analyst', 'business analyst', 'business analysis'],
+        'Power BI':               ['power bi', 'powerbi', 'power-bi'],
+        'Tableau':                ['tableau'],
+        'Data Visualization':     ['data visualization', 'data visualisation', 'dataviz'],
+        'Excel':                  ['excel', 'microsoft excel', 'spreadsheet'],
+        'Statistical Analysis':   ['statistical analysis', 'statistics', 'statistical'],
+        # Information Technology
+        'IT Officer':             ['it officer', 'ict officer', 'information technology officer'],
+        'IT Support':             ['it support', 'ict support', 'tech support', 'technical support'],
+        'IT Manager':             ['it manager', 'ict manager', 'technology manager'],
+        'System Administrator':   ['system administrator', 'sysadmin', 'systems admin'],
+        'Network Administrator':  ['network administrator', 'network admin'],
+        'Network Engineer':       ['network engineer', 'networking engineer'],
+        'Help Desk':              ['help desk', 'helpdesk', 'service desk', 'it helpdesk'],
+        'ITIL':                   ['itil', 'it infrastructure library'],
+        'Cybersecurity':          ['cybersecurity', 'cyber security', 'information security', 'infosec'],
+        'Cloud Computing':        ['cloud computing', 'cloud infrastructure', 'cloud services'],
+        'DevOps':                 ['devops', 'dev ops', 'site reliability', 'sre'],
+        'Systems Analyst':        ['systems analyst', 'system analyst', 'it analyst'],
+        'ICT Officer':            ['ict officer', 'ict', 'information communication technology'],
+        # Graduate / Entry-Level
+        'Graduate':               ['graduate', 'graduates', 'grad'],
+        'Trainee':                ['trainee', 'traineeship'],
+        'Intern':                 ['intern', 'interns'],
+        'Internship':             ['internship', 'internships', 'attachment'],
+        'Entry Level':            ['entry level', 'entry-level', 'entry position'],
+        'Fresh Graduate':         ['fresh graduate', 'recent graduate', 'newly graduated'],
+        'Junior':                 ['junior', 'jr.', 'associate'],
+        'Industrial Attachment':  ['industrial attachment', 'industry attachment'],
+        'Management Trainee':     ['management trainee', 'management trainee program'],
+        'Graduate Program':       ['graduate program', 'graduate programme', 'graduate scheme'],
+        # Database Management
+        'DBA':                    ['dba', 'database administrator', 'db admin'],
+        'Database Administrator': ['database administrator', 'database admin', 'dba'],
+        'Database Developer':     ['database developer', 'db developer'],
+        'Oracle':                 ['oracle', 'oracle database', 'oracle dba'],
+        'MongoDB':                ['mongodb', 'mongo db', 'mongo'],
+        'SQL Server':             ['sql server', 'mssql', 'microsoft sql server'],
+        'MSSQL':                  ['mssql', 'ms sql', 'sql server'],
+        'NoSQL':                  ['nosql', 'no-sql', 'non-relational'],
+        'Database Design':        ['database design', 'schema design', 'data modeling', 'data modelling'],
+        'Database Engineer':      ['database engineer', 'db engineer'],
     }
-    
+
     KEYWORD_WEIGHTS = {
-        'FastAPI': 3,
-        'PostgreSQL': 3,
-        'Docker': 3,
-        'Kafka': 3,
-        'Airflow': 3,
-        'Spark': 3,
-        'AWS': 2.5,
-        'Azure': 2.5,
-        'GCP': 2.5,
-        'Python': 2,
-        'SQL': 2,
-        'Pandas': 2,
-        'MySQL': 2,
-        'Git': 2,
-        'ETL': 2,
+        # High-value: exact role titles Ian is targeting
+        'Data Engineer':          5,
+        'Data Analyst':           5,
+        'Database Administrator': 5,
+        'Graduate Program':       5,
+        'Management Trainee':     5,
+        'Internship':             4,
+        'Graduate':               4,
+        'Business Intelligence':  4,
+        'IT Officer':             4,
+        'Systems Analyst':        4,
+        # Core technical skills
+        'Python':                 3,
+        'SQL':                    3,
+        'ETL':                    3,
+        'Airflow':                3,
+        'PostgreSQL':             3,
+        'Power BI':               3,
+        'Tableau':                3,
+        'AWS':                    2.5,
+        'Azure':                  2.5,
+        'GCP':                    2.5,
+        'Docker':                 2.5,
+        'Spark':                  2.5,
+        'Kafka':                  2.5,
+        'dbt':                    2.5,
+        'Cybersecurity':          2.5,
+        'DevOps':                 2.5,
+        # Supporting skills
+        'MySQL':                  2,
+        'MongoDB':                2,
+        'Excel':                  2,
+        'Analytics':              2,
+        'Linux':                  2,
+        'Network Engineer':       2,
+        'IT Support':             2,
+        'Trainee':                2,
+        'Intern':                 2,
+        'Junior':                 1.5,
     }
 
     def __init__(self, target_keywords: List[str] = None, case_sensitive: bool = False):
@@ -266,11 +343,6 @@ if __name__ == "__main__":
     
 _matcher_instance = None
 
-_matcher_instance = None
-
-_matcher_instance = None
-
-_matcher_instance = None
 
 def get_matcher() -> 'KeywordMatcher':
     global _matcher_instance
@@ -278,10 +350,14 @@ def get_matcher() -> 'KeywordMatcher':
         _matcher_instance = KeywordMatcher()
     return _matcher_instance
 
+
 def match_keywords(text: str) -> List[str]:
-    # Changed from 'extract_keywords' to 'find_matches' to match class
-    return get_matcher().find_matches(text) 
+    return get_matcher().match_keywords(text)
+
 
 def match_in_job(job_data: Dict[str, Any]) -> Dict[str, Any]:
-    # Changed from 'analyze_job' to 'process_job' to match class
-    return get_matcher().process_job(job_data)
+    matcher = get_matcher()
+    score, keywords = matcher.score_job(job_data)
+    job_data['keywords_matched'] = keywords
+    job_data['keyword_count'] = len(keywords)
+    return job_data

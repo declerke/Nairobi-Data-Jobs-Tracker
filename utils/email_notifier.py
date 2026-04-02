@@ -292,16 +292,17 @@ if __name__ == "__main__":
 
 _notifier_instance = None
 
+
 def get_notifier():
     global _notifier_instance
     if _notifier_instance is None:
         _notifier_instance = EmailNotifier()
     return _notifier_instance
 
+
 def send_job_alerts(jobs: List[Dict[str, Any]]):
-    # Match the method name in your class (e.g., notify_new_jobs)
-    return get_notifier().notify_new_jobs(jobs)
+    return get_notifier().send_daily_digest(jobs)
+
 
 def send_test_email():
-    # Match the method name in your class (e.g., send_test_connection)
-    return get_notifier().send_test_connection()
+    return get_notifier().send_test_email()
