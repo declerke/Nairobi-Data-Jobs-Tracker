@@ -70,7 +70,12 @@ The pipeline ships with a **Metabase** self-service BI layer connected directly 
 | `trending_keywords` | Horizontal bar chart | Most-common matched keywords across all sources, last 30 days |
 | `company_hiring_stats` | Table sorted by postings | Companies with 2+ active postings in the last 60 days |
 
-**Live dashboard screenshots:**
+**Airflow DAG run (all 6 tasks — success):**
+
+![Airflow DAG Run](assets/airflow_dag_run.png)
+*Full pipeline execution via Airflow: parallel scrape → process → notify → cleanup, all tasks green*
+
+**Live Metabase dashboard screenshots:**
 
 ![Recent Matched Jobs](assets/recent_matched_jobs.png)
 *`recent_matched_jobs` — ranked keyword-matched roles with source, score, and apply link*
@@ -149,12 +154,16 @@ nairobi-data-jobs-tracker/
 │   └── keyword_matcher.py       # KeywordMatcher with weighted scoring, 91 keywords
 ├── tests/
 │   └── test_scrapers.py         # Unit tests for scrapers and matchers
+├── assets/                      # Screenshots (Airflow DAG run, Metabase dashboards)
 ├── .env.example                 # All environment variables with descriptions
 ├── .gitignore
-├── docker-compose.yml           # postgres:17 + pipeline runner
-├── Dockerfile                   # python:3.11-slim + Playwright Chromium
+├── .dockerignore
+├── docker-compose.yml           # 5-service stack: postgres + Airflow (init/scheduler/webserver) + Metabase
+├── Dockerfile                   # python:3.11-slim + Playwright Chromium (standalone runner)
+├── Dockerfile.airflow           # apache/airflow:2.8.4-python3.11 + Playwright Chromium (Airflow tasks)
 ├── quickstart.py                # Interactive setup checker (Python, DB, email, scrapers)
-├── requirements.txt
+├── requirements.txt             # Full dependency set for standalone runner
+├── requirements.airflow.txt     # Slim dependency set for Airflow image (excludes Airflow-bundled packages)
 ├── run.py                       # Standalone pipeline runner (no Airflow required)
 └── setup_database.sql           # Full schema: tables, indexes, triggers, views, functions
 ```
@@ -211,28 +220,69 @@ nairobi-data-jobs-tracker/
    docker-compose run --rm runner python run.py --dry-run
    ```
 
-### Option C — Airflow Orchestration
+### Option C — Airflow Orchestration (Docker)
 
-1. Complete Option A steps 1–3, then:
+The recommended way to run Airflow is via Docker Compose — no local Airflow installation needed.
+
+1. Copy and configure the environment file:
    ```bash
-   export AIRFLOW_HOME=$(pwd)/airflow
-   airflow db init
-   airflow users create --username admin --password admin \
-     --firstname Admin --lastname User --role Admin --email admin@example.com
-   cp dags/jobs_pipeline_dag.py $AIRFLOW_HOME/dags/
+   cp .env.example .env
+   # Edit .env — set DB_PASSWORD at minimum
    ```
 
-2. Start Airflow:
+2. Build and initialise (one-time):
    ```bash
-   airflow webserver --port 8080 &   # Terminal 1
-   airflow scheduler &               # Terminal 2
+   docker-compose build airflow-init
+   docker-compose up -d postgres airflow-postgres
+   docker-compose run --rm airflow-init
    ```
+
+3. Start all services:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. Trigger the DAG manually or let it run on schedule (`0 8 * * *` Africa/Nairobi):
+   ```bash
+   docker exec <scheduler-container> airflow dags trigger nairobi_data_jobs_pipeline
+   ```
+
+> **Note:** The standalone `runner` service is on the `standalone` Docker Compose profile and will not start automatically. Use `docker-compose run --rm runner python run.py` to invoke it explicitly.
 
 | **Service**     | **URL**                   |
 |-----------------|---------------------------|
 | Metabase        | http://localhost:3000     |
 | Airflow UI      | http://localhost:8080     |
 | PostgreSQL      | localhost:5432            |
+
+---
+
+## 📧 Email Notification Setup
+
+Notifications are sent as an **HTML digest email** via Gmail SMTP/TLS. The email goes to the address set in `EMAIL_RECIPIENT` and is triggered once per pipeline run for any jobs with ≥1 keyword match that have not yet been notified.
+
+**Required `.env` variables:**
+
+```env
+EMAIL_USER=your.gmail@gmail.com        # Gmail address used to send
+EMAIL_PASSWORD=xxxx xxxx xxxx xxxx     # Gmail App Password (not your login password)
+EMAIL_RECIPIENT=recipient@example.com  # Where the digest is delivered (can be same as EMAIL_USER)
+ENABLE_EMAIL_NOTIFICATIONS=True
+```
+
+**Gmail App Password setup (required — Gmail blocks plain passwords):**
+
+1. Enable 2-Step Verification on your Google account at [myaccount.google.com/security](https://myaccount.google.com/security)
+2. Go to **Security → 2-Step Verification → App passwords**
+3. Create a new App Password — select **Mail** and **Windows Computer** (or any device)
+4. Copy the 16-character code (format: `xxxx xxxx xxxx xxxx`) into `EMAIL_PASSWORD` in your `.env`
+
+**What the digest contains:**
+- Subject: `[Nairobi Jobs] N New Job Matches — YYYY-MM-DD`
+- HTML table of matched jobs with title, company, location, keyword badges, salary, and a direct **Apply** link
+- Plain-text fallback for email clients that block HTML
+
+If `ENABLE_EMAIL_NOTIFICATIONS=False` or credentials are missing, the `send_email_notifications` task completes silently with a return value of 0 — the pipeline continues normally without sending.
 
 ---
 
@@ -266,9 +316,9 @@ SELECT * FROM company_hiring_stats;    -- companies with ≥2 postings, last 60 
 - **NLP-adjacent keyword scoring** — compiled regex patterns with `\b` boundaries, multi-word phrase support, domain category weighting, and title-boost multipliers
 - **PostgreSQL advanced features** — GIN indexes on `TEXT[]` and `tsvector`, BEFORE INSERT/UPDATE triggers, `CREATE OR REPLACE VIEW`, stored functions with `RETURNS TABLE`, `ON CONFLICT DO NOTHING` upsert, JSONB metadata column
 - **Connection pool management** — `psycopg2.pool.SimpleConnectionPool` with context-manager-based borrow/return, safe JSONB serialisation, and `RealDictCursor` for dict-native result sets
-- **Apache Airflow DAG design** — parallel task fan-out (three scraper tasks) → serial fan-in (process → notify → cleanup), XCom for inter-task data passing, configurable retry/delay, task-level scrape logging
+- **Apache Airflow DAG design** — parallel task fan-out (three scraper tasks) → serial fan-in (process → notify → cleanup), XCom for inter-task data passing, configurable retry/delay, task-level scrape logging; all 6 tasks validated end-to-end in Docker
 - **Production pipeline patterns** — `ON CONFLICT` deduplication, `is_notified` state tracking, automated archival of 180-day-old records, log retention cleanup, `--dry-run` flag for safe testing
-- **Docker containerisation** — multi-service `docker-compose.yml` with health checks, shared volume for logs, `docker-entrypoint-initdb.d` schema bootstrap, environment variable injection
+- **Docker containerisation** — two custom Dockerfiles (standalone runner + Airflow); 5-service `docker-compose.yml` with YAML anchors, health-check dependency chains, named volumes, profile-based service isolation, and `docker-entrypoint-initdb.d` schema bootstrap
 - **Email automation** — SMTP/TLS with `smtplib`, MIME multipart HTML/plain digest, keyword badge rendering, per-job apply links, send status logging
 - **Self-service BI with Metabase** — PostgreSQL views exposed as a zero-code analytics layer; demonstrates that production data models are consumable by non-engineers, a key expectation in data engineering roles
 - **Modular Python architecture** — singleton pattern for DB/email/matcher instances, `__init__.py` re-exports for clean imports, separation of config / scrapers / utils / orchestration layers
