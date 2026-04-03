@@ -1,0 +1,22 @@
+FROM apache/airflow:2.8.4-python3.11
+
+USER root
+
+# System packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq-dev gcc curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install playwright via python -m pip (bypasses Airflow's root-pip guard)
+# then install Chromium system deps (needs root/apt-get)
+RUN python -m pip install --no-cache-dir playwright==1.58.0 && \
+    python -m playwright install-deps chromium
+
+# Install all other extra packages as the airflow user
+COPY requirements.airflow.txt /tmp/requirements.airflow.txt
+USER airflow
+RUN pip install --no-cache-dir -r /tmp/requirements.airflow.txt
+
+# Download Chromium browser binary for the airflow user
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/airflow/.cache/ms-playwright
+RUN playwright install chromium

@@ -1,5 +1,33 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: Africa/Nairobi
+    AIRFLOW__CORE__FERNET_KEY: "1_0MrT8MiA8aH2R6jhuLXMLe3hHFMIllzmyGmThUrG0="
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/project/dags
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    PYTHONPATH: /opt/airflow/project
+    PLAYWRIGHT_BROWSERS_PATH: /home/airflow/.cache/ms-playwright
+    DB_HOST: postgres
+  env_file: .env
+  volumes:
+    - ./:/opt/airflow/project
+    - airflow_logs:/opt/airflow/logs
+  depends_on:
+    airflow-postgres:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+
 services:
 
+  # ── Jobs database ────────────────────────────────────────────────────────
   postgres:
     image: postgres:17-alpine
     environment:
@@ -18,6 +46,60 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # ── Airflow metadata database ────────────────────────────────────────────
+  airflow-postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Airflow one-time init ────────────────────────────────────────────────
+  airflow-init:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@localhost --password admin"
+    restart: on-failure
+
+  # ── Airflow scheduler ────────────────────────────────────────────────────
+  airflow-scheduler:
+    <<: *airflow-common
+    command: airflow scheduler
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ── Airflow webserver ────────────────────────────────────────────────────
+  airflow-webserver:
+    <<: *airflow-common
+    command: airflow webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  # ── Standalone runner (no Airflow) ───────────────────────────────────────
   runner:
     build: .
     depends_on:
@@ -29,7 +111,10 @@ services:
     volumes:
       - ./logs:/app/logs
     command: python run.py
+    profiles:
+      - standalone
 
+  # ── Metabase BI dashboard ────────────────────────────────────────────────
   metabase:
     image: metabase/metabase:latest
     ports:
@@ -48,6 +133,9 @@ services:
       retries: 10
     restart: unless-stopped
 
+
 volumes:
   postgres_data:
+  airflow_postgres_data:
+  airflow_logs:
   metabase_data:

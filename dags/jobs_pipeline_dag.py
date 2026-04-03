@@ -239,40 +239,40 @@ with DAG(
     tags=['jobs', 'scraping', 'nairobi', 'data'],
 ) as dag:
     
-    scrape_brightermonday = PythonOperator(
+    t_scrape_brightermonday = PythonOperator(
         task_id='scrape_brightermonday',
         python_callable=scrape_brightermonday_task,
         provide_context=True,
     )
-    
-    scrape_myjobmag = PythonOperator(
+
+    t_scrape_myjobmag = PythonOperator(
         task_id='scrape_myjobmag',
         python_callable=scrape_myjobmag_task,
         provide_context=True,
     )
-    
-    scrape_fuzu = PythonOperator(
+
+    t_scrape_fuzu = PythonOperator(
         task_id='scrape_fuzu',
         python_callable=scrape_fuzu_task,
         provide_context=True,
     )
-    
-    process_and_store = PythonOperator(
+
+    t_process_and_store = PythonOperator(
         task_id='process_and_store_jobs',
         python_callable=process_and_store_jobs_task,
         provide_context=True,
     )
-    
-    send_notifications = PythonOperator(
+
+    t_send_notifications = PythonOperator(
         task_id='send_email_notifications',
         python_callable=send_email_notifications_task,
         provide_context=True,
     )
-    
-    cleanup = PythonOperator(
+
+    t_cleanup = PythonOperator(
         task_id='cleanup_old_data',
         python_callable=cleanup_old_data_task,
         provide_context=True,
     )
-    
-    [scrape_brightermonday, scrape_myjobmag, scrape_fuzu] >> process_and_store >> send_notifications >> cleanup
+
+    [t_scrape_brightermonday, t_scrape_myjobmag, t_scrape_fuzu] >> t_process_and_store >> t_send_notifications >> t_cleanup
