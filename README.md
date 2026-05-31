@@ -38,7 +38,7 @@ Finding relevant data and IT roles in Nairobi requires monitoring BrighterMonday
 | DB Driver         | psycopg2-binary           | 2.9.9       |
 | Notifications     | smtplib (Gmail SMTP/TLS)  | stdlib      |
 | Dashboard         | Metabase                  | latest      |
-| Orchestration     | Apache Airflow            | 2.x         |
+| Orchestration     | Apache Airflow            | 2.10.5      |
 | Containerisation  | Docker + Docker Compose   | latest      |
 | Configuration     | python-dotenv             | 1.0.1       |
 | Language          | Python                    | 3.11        |
@@ -176,7 +176,7 @@ nairobi-data-jobs-tracker/
 
 1. Clone the repository and create a virtual environment:
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/declerke/Nairobi-Data-Jobs-Tracker.git
    cd nairobi-data-jobs-tracker
    python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
    pip install -r requirements.txt
