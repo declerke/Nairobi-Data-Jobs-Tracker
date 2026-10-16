@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 import sys
 from pathlib import Path
 
@@ -28,21 +27,27 @@ class TestBrighterMondayScraper:
     
     def test_build_search_url(self):
         scraper = BrighterMondayScraper()
-        url = scraper.build_search_url(query='data engineer', location='nairobi', page=1)
-        assert 'data engineer' in url.lower() or 'data+engineer' in url.lower()
-        assert 'nairobi' in url.lower()
+        url = scraper.build_search_url(query='data engineer')
+        assert url == f'{scraper.BASE_URL}/jobs?q=data engineer'
     
-    @patch('scrapers.brightermonday.get_request_helper')
-    def test_scrape_with_mock(self, mock_helper):
-        mock_response = Mock()
-        mock_response.text = '<html><body><div class="job-card"><h2>Data Engineer</h2></div></body></html>'
-        
-        mock_helper_instance = Mock()
-        mock_helper_instance.get_with_retry.return_value = mock_response
-        mock_helper.return_value = mock_helper_instance
-        
+    def test_parse_api_json_normalizes_job_fields(self):
         scraper = BrighterMondayScraper()
-        assert scraper.SOURCE_NAME is not None
+        jobs = scraper._parse_api_json({
+            'results': [{
+                'title': ' Senior Data Engineer ',
+                'url': '/listings/123',
+                'company': ' Acme Analytics ',
+                'location': 'Nairobi',
+                'description': 'Build and maintain data pipelines.'
+            }]
+        })
+
+        assert len(jobs) == 1
+        assert jobs[0]['job_title'] == 'Senior Data Engineer'
+        assert jobs[0]['company'] == 'Acme Analytics'
+        assert jobs[0]['posting_url'] == f'{scraper.BASE_URL}/listings/123'
+        assert jobs[0]['source'] == 'BrighterMonday'
+        assert jobs[0]['metadata'] == {'source': 'api_intercept'}
 
 class TestMyJobMagScraper:
     
@@ -53,15 +58,21 @@ class TestMyJobMagScraper:
     
     def test_build_search_url(self):
         scraper = MyJobMagScraper()
-        url = scraper.build_search_url(query='data', location='nairobi')
-        assert 'data' in url.lower()
+        url = scraper.build_search_url(location='nairobi', page=2)
+        assert url == f'{scraper.BASE_URL}/jobs-location/nairobi/2'
 
 class TestFuzuScraper:
     
     def test_scraper_initialization(self):
         scraper = FuzuScraper()
         assert scraper.SOURCE_NAME == 'Fuzu'
-        assert scraper.BASE_URL == 'https://www.fuzu.com'
+        assert scraper.BASE_URL == 'https://fuzu.com'
+
+    def test_build_search_url(self):
+        scraper = FuzuScraper()
+        assert scraper.build_search_url(query='data', page=2) == (
+            f'{scraper.BASE_URL}/kenya/jobs?q=data&page=2'
+        )
 
 class TestHelperFunctions:
     
