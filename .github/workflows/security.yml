@@ -1,6 +1,7 @@
 name: Security Audit
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -27,7 +28,7 @@ jobs:
         run: pip install pip-audit
 
       - name: Run pip-audit (main dependencies)
-        run: pip-audit -r requirements.txt --no-deps
+        run: pip-audit -r requirements.txt
 
       - name: Run pip-audit (Airflow image dependencies)
-        run: pip-audit -r requirements.airflow.txt --no-deps
+        run: pip-audit -r requirements.airflow.txt
