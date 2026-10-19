@@ -32,3 +32,36 @@ jobs:
 
       - name: Run pip-audit (Airflow image dependencies)
         run: pip-audit -r requirements.airflow.txt
+
+  airflow-image-audit:
+    name: Audit installed packages in the Airflow image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the Airflow runtime image
+        run: docker build --pull --file Dockerfile.airflow --tag nairobi-data-jobs-airflow:${{ github.sha }} .
+
+      - name: Verify the runtime environment and export installed packages
+        env:
+          IMAGE: nairobi-data-jobs-airflow:${{ github.sha }}
+        run: |
+          docker run --rm --entrypoint python "$IMAGE" -m pip check
+          docker run --rm --entrypoint python "$IMAGE" -c "import airflow; print(airflow.__version__)"
+          docker run --rm --entrypoint python "$IMAGE" -m pip list --format=freeze > airflow-image-packages.txt
+          test -s airflow-image-packages.txt
+
+      - name: Set up Python for auditing the image package list
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: python -m pip install --disable-pip-version-check pip-audit==2.10.1
+
+      - name: Audit installed packages from the Airflow image
+        run: pip-audit --no-deps --requirement airflow-image-packages.txt --progress-spinner off
