@@ -3,6 +3,11 @@
 # python-dateutil, pytz, requests, urllib3, tenacity — so those are omitted
 # or left unpinned to avoid resolver conflicts.
 
+# Security updates for packages inherited from the Airflow base image.
+uv==0.11.15
+virtualenv==21.7.13
+wheel==0.46.2
+
 # Scraping
 beautifulsoup4==4.12.3
 lxml==6.1.1
